@@ -122,7 +122,6 @@ class Board:
     def forecast_move(self, queen_move):
         new_board = self.copy()
         is_over, winner = new_board.__apply_move__(queen_move)
-        print("here: ",winner)
         return new_board, is_over, winner
 
     def get_active_player(self):

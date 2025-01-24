@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from game import Board, game_as_text
 from random import randint
-
+import sys
 
 # This file is your main submission that will be graded against. Do not
 # add any classes or functions to this file that are not part of the classes
@@ -35,7 +35,6 @@ class OpenMoveEvalFn:
 
         raise NotImplementedError
 
-
 class CustomEvalFn:
     def __init__(self):
         pass
@@ -43,7 +42,7 @@ class CustomEvalFn:
         if r == 0 or r == game.height - 1 or c == 0 or c == game.width - 1:
             return True
         return False
-
+    
     def score(self, game, maximizing_player_turn=True):
         """Score the current game state
 
@@ -59,30 +58,36 @@ class CustomEvalFn:
             float: The current state's score, based on your own heuristic.
 
         """
-        game_copy = game.copy()
-
+        #game_copy = game.copy()
+        print("legal: ",len(game.get_legal_moves()))
+        print("opps: ", len(game.get_opponent_moves()))
         #p1_r, p1_c, push = game.__last_queen_move__[game.__queen_1__]
-        current_player = game.__inactive_players_queen__
+        current_player = game.__inactive_players_queen__ # because in the current state of the game,
+                                                         # we have applied a move and considering it
         other_player = game.__active_players_queen__
-        p2_r, p2_c, push = game.__last_queen_move__[current_player]
-        print(current_player," position :", p2_r, p2_c)
-        print(CustomEvalFn.is_on_border(game, p2_r, p2_c))
-        move_under_consideration = p2_r, p2_c, push
-        _, isOver, winner = game_copy.forecast_move(move_under_consideration)
-        print ("Winner is:", winner,"over? ", isOver)
-        if winner is current_player:
-            return float('inf')
+        move_r, move_c, push = game.__last_queen_move__[current_player]
+        print(current_player,"'s move: ", move_r, move_c)
+        print("on_border? ", CustomEvalFn.is_on_border(game, move_r, move_c))
+        move_under_consideration = move_r, move_c, push
+        #_, isOver, winner = game_copy.forecast_move(move_under_consideration)
+
+        #print ("Winner is:", winner,"over? ", isOver)
+        #if winner is other_player:
+        #    return float('-inf')
         
+        if game.get_opponent_moves() == 0:
+            result += 100000000
+        elif game.get_opponent_moves() == 1:
+            result += 1000000
 
-
-        game_copy.__apply_move__(move_under_consideration)
+        #game_copy.__apply_move__(move_under_consideration)
 
         # TODO: finish this function!
         result = 0
         #if 
         a = 100
-        b = 10
-        result += a*len(game.get_legal_moves()) - a*len(game.get_opponent_moves())
+        b = 1000
+        result += a*len(game.get_legal_moves()) - b*len(game.get_opponent_moves())
         #if CustomEvalFn.is_on_border(game, p2_r, p2_c):
         #    result -= b
         print("score for move:", result)
