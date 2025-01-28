@@ -2,6 +2,11 @@
 from game import Board, game_as_text
 from random import randint
 import sys
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+logger = logging.getLogger()
 
 # This file is your main submission that will be graded against. Do not
 # add any classes or functions to this file that are not part of the classes
@@ -42,57 +47,68 @@ class CustomEvalFn:
         if r == 0 or r == game.height - 1 or c == 0 or c == game.width - 1:
             return True
         return False
-    
+    def is_first(game):
+        if (len(game.get_legal_moves()) == game.width*game.height):
+            return True
+        else: return False
     def score(self, game, maximizing_player_turn=True):
-        """Score the current game state
+            #if game.utility(game.active_player) != 0:
+            #    # Return a large positive or negative value if the game is over
+            #    return float("inf") if game.active_player == maximizing_player_turn else float("-inf")
 
-        Custom evaluation function that acts however you think it should. This
-        is not required but highly encouraged if you want to build the best
-        AI possible.
+            # Get the active and inactive players
+            custom_player_queen=game.__queen_2__
+            print("custome queen: ",custom_player_queen)
+            active_player = game.__active_player__
+            inactive_player = game.__inactive_player__
 
-        Args
-            game (Board): The board and game state.
-            maximizing_player_turn (bool): True if maximizing player is active.
+            # Calculate mobility: number of legal moves
+            active_moves = len(game.get_legal_moves())
+            inactive_moves = len(game.get_opponent_moves())
 
-        Returns:
-            float: The current state's score, based on your own heuristic.
+            # Central control: prioritize positions near the center of the board
+            board_width, board_height = game.width, game.height
+            center_x, center_y = board_width / 2, board_height / 2
 
-        """
-        #game_copy = game.copy()
-        print("legal: ",len(game.get_legal_moves()))
-        print("opps: ", len(game.get_opponent_moves()))
-        #p1_r, p1_c, push = game.__last_queen_move__[game.__queen_1__]
-        current_player = game.__inactive_players_queen__ # because in the current state of the game,
-                                                         # we have applied a move and considering it
-        other_player = game.__active_players_queen__
-        move_r, move_c, push = game.__last_queen_move__[current_player]
-        print(current_player,"'s move: ", move_r, move_c)
-        print("on_border? ", CustomEvalFn.is_on_border(game, move_r, move_c))
-        move_under_consideration = move_r, move_c, push
-        #_, isOver, winner = game_copy.forecast_move(move_under_consideration)
+            def distance_to_center(position):
+                return abs(position[0] - center_x) + abs(position[1] - center_y)
 
-        #print ("Winner is:", winner,"over? ", isOver)
-        #if winner is other_player:
-        #    return float('-inf')
-        
-        if game.get_opponent_moves() == 0:
-            result += 100000000
-        elif game.get_opponent_moves() == 1:
-            result += 1000000
+            
+            # Get player positions
+            active_position = game.__last_queen_move__[game.__active_players_queen__][:2]
+            inactive_position = game.__last_queen_move__[game.__inactive_players_queen__][:2]
+            inactive_x, inactive_y = inactive_position
+            print("active: ",game.__active_players_queen__,": ",active_position)
+            print("inactive: ",game.__inactive_players_queen__,": ",inactive_position)
+            """
+            if inactive_x == 0 or inactive_x == board_width - 1 or inactive_y == 0 or inactive_y == board_height - 1:
+                # Opponent is on the border, check for a push move
+                for move in game.get_legal_moves():
+                    next_game, _, _ = game.forecast_move(move)
+                    next_inactive_position = next_game.__last_queen_move__[game.__inactive_players_queen__][:2]
+                    if next_inactive_position is None:  # Opponent forced off the grid
+                        print("bingo")
+                        return float("inf")  # Force this move
+            """
 
-        #game_copy.__apply_move__(move_under_consideration)
+            active_central_control = -distance_to_center(active_position)
+            inactive_central_control = -distance_to_center(inactive_position)
 
-        # TODO: finish this function!
-        result = 0
-        #if 
-        a = 100
-        b = 1000
-        result += a*len(game.get_legal_moves()) - b*len(game.get_opponent_moves())
-        #if CustomEvalFn.is_on_border(game, p2_r, p2_c):
-        #    result -= b
-        print("score for move:", result)
-        return result
-        raise NotImplementedError
+            # Weighted evaluation
+            mobility_weight = 1.0
+            center_control_weight = 0.5
+
+            active_score = (
+                mobility_weight * active_moves +
+                center_control_weight * active_central_control
+            )
+            inactive_score = (
+                mobility_weight * inactive_moves +
+                center_control_weight * inactive_central_control
+            )
+
+            # Return the difference in scores depending on the perspective
+            return active_score - inactive_score if maximizing_player_turn else inactive_score - active_score
 
 
 class CustomPlayer:
@@ -134,6 +150,7 @@ class CustomPlayer:
             """
 
         best_move, utility = self.minimax(game, time_left, depth=self.search_depth)
+        logger.debug(f"Chosen Move: {best_move}, Utility: {utility}")
         return best_move
 
     def utility(self, game, maximizing_player):
@@ -168,7 +185,8 @@ class CustomPlayer:
             else:
                 if value < best_val:
                     best_val, best_move = value, move
-
+            logger.debug(f"Returning from Minimax: move={move}, value={value}")
+        logger.debug(f"Returning from Minimax: Depth={depth}, Best Move={best_move}, Best Value={best_val}")
         return best_move, best_val
 
     # Maximizing player strategy
@@ -219,5 +237,33 @@ class CustomPlayer:
             (tuple, int): best_move, val
         """
         # TODO: finish this function!
+        # Terminal situation: depth = 0 or illegal move
+        if depth == 0 or not game.get_legal_moves():
+            return (0, 0), self.utility(game, maximizing_player)
+
+        best_move = (0, 0)
+        if maximizing_player:
+            best_val = float('-inf')
+            for move in game.get_legal_moves():
+                next_game, _, _ = game.forecast_move(move)
+                _, val = self.alphabeta(next_game, time_left, depth - 1, alpha, beta, False)
+                if val > best_val:
+                    best_val = val
+                    best_move = move
+                alpha = max(alpha, best_val)
+                if beta <= alpha:
+                    break
+        else:
+            best_val = float('inf')
+            for move in game.get_legal_moves():
+                next_game, _, _ = game.forecast_move(move)
+                _, val = self.alphabeta(next_game, time_left, depth - 1, alpha, beta, True)
+                if val < best_val:
+                    best_val = val
+                    best_move = move
+                beta = min(beta, best_val)
+                if beta <= alpha:
+                    break
+
+        return best_move, best_val
         raise NotImplementedError
-        return best_move, val
