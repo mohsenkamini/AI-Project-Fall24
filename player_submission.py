@@ -36,14 +36,20 @@ class OpenMoveEvalFn:
             """
 
         # TODO: finish this function!
-        return len(game.get_legal_moves()) - len(game.get_opponent_moves())
+        p1=len(game.get_legal_moves())
+        p2=len(game.get_opponent_moves())
+        if maximizing_player_turn:
+            return p1 - p2
+        else: 
+            return p2-p1
 
         raise NotImplementedError
 
 class CustomEvalFn:
     def __init__(self):
         pass
-    def is_on_border(game, r, c):
+    def is_on_border(game, position):
+        r,c = position
         if r == 0 or r == game.height - 1 or c == 0 or c == game.width - 1:
             return True
         return False
@@ -52,63 +58,80 @@ class CustomEvalFn:
             return True
         else: return False
     def score(self, game, maximizing_player_turn=True):
-            #if game.utility(game.active_player) != 0:
-            #    # Return a large positive or negative value if the game is over
-            #    return float("inf") if game.active_player == maximizing_player_turn else float("-inf")
+        if maximizing_player_turn:
+            p1_moves = len(game.get_legal_moves())
+            p2_moves = len(game.get_opponent_moves())
 
-            # Get the active and inactive players
-            custom_player_queen=game.__queen_2__
-            print("custome queen: ",custom_player_queen)
-            active_player = game.__active_player__
-            inactive_player = game.__inactive_player__
+            p1_position = game.__last_queen_move__[game.__active_players_queen__][:2]
+            p2_position = game.__last_queen_move__[game.__inactive_players_queen__][:2]
+        else:
+            p2_moves = len(game.get_legal_moves())
+            p1_moves = len(game.get_opponent_moves())
 
-            # Calculate mobility: number of legal moves
-            active_moves = len(game.get_legal_moves())
-            inactive_moves = len(game.get_opponent_moves())
-
-            # Central control: prioritize positions near the center of the board
-            board_width, board_height = game.width, game.height
-            center_x, center_y = board_width / 2, board_height / 2
-
-            def distance_to_center(position):
-                return abs(position[0] - center_x) + abs(position[1] - center_y)
-
+            p2_position = game.__last_queen_move__[game.__active_players_queen__][:2]
+            p1_position = game.__last_queen_move__[game.__inactive_players_queen__][:2]
             
-            # Get player positions
-            active_position = game.__last_queen_move__[game.__active_players_queen__][:2]
-            inactive_position = game.__last_queen_move__[game.__inactive_players_queen__][:2]
-            inactive_x, inactive_y = inactive_position
-            print("active: ",game.__active_players_queen__,": ",active_position)
-            print("inactive: ",game.__inactive_players_queen__,": ",inactive_position)
-            """
-            if inactive_x == 0 or inactive_x == board_width - 1 or inactive_y == 0 or inactive_y == board_height - 1:
-                # Opponent is on the border, check for a push move
-                for move in game.get_legal_moves():
-                    next_game, _, _ = game.forecast_move(move)
-                    next_inactive_position = next_game.__last_queen_move__[game.__inactive_players_queen__][:2]
-                    if next_inactive_position is None:  # Opponent forced off the grid
-                        print("bingo")
-                        return float("inf")  # Force this move
-            """
-
-            active_central_control = -distance_to_center(active_position)
-            inactive_central_control = -distance_to_center(inactive_position)
-
-            # Weighted evaluation
-            mobility_weight = 1.0
-            center_control_weight = 0.5
-
-            active_score = (
-                mobility_weight * active_moves +
-                center_control_weight * active_central_control
-            )
-            inactive_score = (
-                mobility_weight * inactive_moves +
-                center_control_weight * inactive_central_control
-            )
-
-            # Return the difference in scores depending on the perspective
-            return active_score - inactive_score if maximizing_player_turn else inactive_score - active_score
+        result=0
+        result+= (p1_moves - p2_moves)
+        if CustomEvalFn.is_on_border(game,p2_position):
+            result += 5
+        if CustomEvalFn.is_on_border(game,p1_position):
+            result -= 5
+            
+        return result;
+            # Get the active and inactive players
+            #custom_player_queen=game.__queen_2__
+            #print("custome queen: ",custom_player_queen)
+            #active_player = game.__active_player__
+            #inactive_player = game.__inactive_player__
+#
+            ## Calculate mobility: number of legal moves
+            #active_moves = len(game.get_legal_moves())
+            #inactive_moves = len(game.get_opponent_moves())
+#
+            ## Central control: prioritize positions near the center of the board
+            #board_width, board_height = game.width, game.height
+            #center_x, center_y = board_width / 2, board_height / 2
+#
+            #def distance_to_center(position):
+            #    return abs(position[0] - center_x) + abs(position[1] - center_y)
+#
+            #
+            ## Get player positions
+            #active_position = game.__last_queen_move__[game.__active_players_queen__][:2]
+            #inactive_position = game.__last_queen_move__[game.__inactive_players_queen__][:2]
+            #inactive_x, inactive_y = inactive_position
+            #print("active: ",game.__active_players_queen__,": ",active_position)
+            #print("inactive: ",game.__inactive_players_queen__,": ",inactive_position)
+            #"""
+            #if inactive_x == 0 or inactive_x == board_width - 1 or inactive_y == 0 or inactive_y == board_height - 1:
+            #    # Opponent is on the border, check for a push move
+            #    for move in game.get_legal_moves():
+            #        next_game, _, _ = game.forecast_move(move)
+            #        next_inactive_position = next_game.__last_queen_move__[game.__inactive_players_queen__][:2]
+            #        if next_inactive_position is None:  # Opponent forced off the grid
+            #            print("bingo")
+            #            return float("inf")  # Force this move
+            #"""
+#
+            #active_central_control = -distance_to_center(active_position)
+            #inactive_central_control = -distance_to_center(inactive_position)
+#
+            ## Weighted evaluation
+            #mobility_weight = 1.0
+            #center_control_weight = 0.5
+#
+            #active_score = (
+            #    mobility_weight * active_moves +
+            #    center_control_weight * active_central_control
+            #)
+            #inactive_score = (
+            #    mobility_weight * inactive_moves +
+            #    center_control_weight * inactive_central_control
+            #)
+#
+            ## Return the difference in scores depending on the perspective
+            #return active_score - inactive_score if maximizing_player_turn else inactive_score - active_score
 
 
 class CustomPlayer:
@@ -148,7 +171,17 @@ class CustomPlayer:
             Returns:
                 tuple: best_move
             """
-
+        center_positions = [
+            (game.height // 2 - 1, game.width // 2 - 1),
+            (game.height // 2 - 1, game.width // 2),
+            (game.height // 2, game.width // 2 - 1),
+            (game.height // 2, game.width // 2),
+        ]
+        if len(legal_moves) == (game.width*game.height)-1:
+            #return a center move that is legal
+            for move in center_positions:
+                if move in game.get_legal_moves():
+                    return move
         best_move, utility = self.minimax(game, time_left, depth=self.search_depth)
         logger.debug(f"Chosen Move: {best_move}, Utility: {utility}")
         return best_move
