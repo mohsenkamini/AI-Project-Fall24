@@ -153,6 +153,7 @@ class CustomPlayer:
         """
         self.eval_fn = eval_fn
         self.search_depth = search_depth
+        self.first_move = True
 
     def move(self, game, legal_moves, time_left):
         """Called to determine one move by your agent
@@ -171,17 +172,48 @@ class CustomPlayer:
             Returns:
                 tuple: best_move
             """
+        opponent_move=game.__last_queen_move__[game.__inactive_players_queen__]
         center_positions = [
-            (game.height // 2 - 1, game.width // 2 - 1),
-            (game.height // 2 - 1, game.width // 2),
-            (game.height // 2, game.width // 2 - 1),
-            (game.height // 2, game.width // 2),
+            (game.height // 2 - 1, game.width // 2 - 1, False),
+            (game.height // 2 - 1, game.width // 2 - 1, True),
+            (game.height // 2 - 1, game.width // 2,False),
+            (game.height // 2 - 1, game.width // 2,True),
+            (game.height // 2, game.width // 2 - 1,False),
+            (game.height // 2, game.width // 2 - 1,True),
+            (game.height // 2, game.width // 2,False),
+            (game.height // 2, game.width // 2,True),
         ]
-        if len(legal_moves) == (game.width*game.height)-1:
+        # start from center
+        #if len(legal_moves) == (game.width*game.height)-2 or len(legal_moves) == (game.width*game.height) :
             #return a center move that is legal
+        #print(self.first_move)
+        #print(game.get_legal_moves())
+        if self.first_move:
             for move in center_positions:
-                if move in game.get_legal_moves():
+                if move is not opponent_move:
+                    self.first_move = False
                     return move
+        
+        # win if we can:
+        winning_move = (*opponent_move[:2],True)
+        opponent_position=opponent_move[:2]
+        our_position=game.__last_queen_move__[game.__active_players_queen__][:2]
+        #push_direction = (our_position[0] - self.position[0], our_position[1] - self.position[1])  # Direction vector
+        push_direction = (
+                max(-1, min(1, opponent_position[0] - our_position[0])),
+                max(-1, min(1, opponent_position[1] - our_position[1])),
+            )  # Ensures movement is -1, 0, or 1
+        pushed_position = (opponent_position[0] + push_direction[0], opponent_position[1] + push_direction[1])
+        print("push: ",push_direction)
+        print(pushed_position)
+        if not (0 <= pushed_position[0] < game.height and 0 <= pushed_position[1] < game.width):
+            if winning_move in game.get_legal_moves():
+                return winning_move
+
+        #if (CustomEvalFn.is_on_border(game,opponent_position)):
+        #    return winning_move
+        
+        
         best_move, utility = self.minimax(game, time_left, depth=self.search_depth)
         logger.debug(f"Chosen Move: {best_move}, Utility: {utility}")
         return best_move
